@@ -1,0 +1,10 @@
+#docker run -d --name moontv -e "PASSWORD=a605288582"  -p 3000:3000 ghcr.io/senshinya/moontv:latest
+services:
+  moontv:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/moontv:latest
+    container_name: moontv
+    restart: unless-stopped
+    environment:
+      PASSWORD: a605288582
+    ports:
+      - "3001:3000"

@@ -1,0 +1,17 @@
+version: '1.0'
+services:
+  neo4j:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/neo4j:5.20.0-community
+    container_name: neo4j
+    volumes:
+      - ./conf:/var/lib/neo4j/conf
+      - ./import:/var/lib/neo4j/import
+      - ./plugins:/plugins
+      - ./data:/data
+      - ./logs:/var/lib/neo4j/logs
+    restart: always
+    ports:
+      - 7474:7474
+      - 7687:7687
+    environment:
+      - NEO4J_AUTH=neo4j/hjm029796

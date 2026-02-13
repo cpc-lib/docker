@@ -1,0 +1,27 @@
+version: '3'
+
+networks:
+  rabbitmq:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "172.25.0.0/24"
+
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    build:
+      context: .
+    image: g2plus/rabbitmq:3.13.3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "15672:15672" # 管理界面端口
+      - "5672:5672"   # api 端口
+    volumes:
+      - /www/devops/rabbitmq/log:/var/log/rabbitmq
+      - /www/devops/rabbitmq/data:/var/lib/rabbitmq
+    networks:
+      rabbitmq:
+        ipv4_address: 172.25.0.1

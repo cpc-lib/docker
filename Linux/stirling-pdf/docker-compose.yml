@@ -1,0 +1,22 @@
+version: '3.3'
+services:
+  stirling-pdf:
+    image: frooodle/s-pdf:0.36.6
+    ports:
+      - '8085:8080'
+    volumes:
+      - ./trainingData:/usr/share/tessdata #Required for extra OCR languages
+      - ./extraConfigs:/configs
+      - ./customFiles:/customFiles/
+      - ./logs:/logs/
+    environment:
+      - DOCKER_ENABLE_SECURITY=true
+      - SECURITY_ENABLELOGIN=true
+      - SECURITY_INITIALLOGIN_USERNAME=admin
+      - SECURITY_INITIALLOGIN_PASSWORD=hjm029796
+      - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
+      - LANGS=th_TH
+      - UI_APP_NAME=Put any name here
+      - UI_HOME_DESCRIPTION=Your locally hosted one-stop-shop for all your PDF needs.
+      - UI_APP_NAVBAR_NAME=Stirling PDF
+    restart: always

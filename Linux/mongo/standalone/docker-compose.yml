@@ -1,0 +1,35 @@
+networks:
+  mongo:
+
+services:
+  mongodb:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/mongo:4.4.6
+    restart: unless-stopped
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: hjm029796
+      MONGO_DATA_DIR: /data/db
+      MONGO_LOG_DIR: /data/logs
+    volumes:
+      - ./mongodb/db:/data/db
+      - ./mongodb/log:/data/log
+    ports:
+      - "27017:27017"
+    networks:
+      - mongo
+
+  adminmongo:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/adminmongo
+    restart: unless-stopped
+    container_name: adminmongo
+    environment:
+      - HOST=0.0.0.0
+    depends_on:
+      - 'mongodb'
+    links:
+      - mongodb
+    ports:
+      - "1234:1234"
+    networks:
+      - mongo

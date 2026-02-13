@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/rabbitmq:3.13.3-management
+    container_name: rabbitmq-mqtt
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123456
+    volumes:
+      - ./data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Management UI
+      - "1883:1883"     # MQTT
+      - "15675:15675"   # MQTT over WebSockets (optional)
+    command: >
+      bash -lc "
+      rabbitmq-plugins enable --offline rabbitmq_mqtt rabbitmq_web_mqtt &&
+      rabbitmq-server
+      "
+    networks:
+      rabbitnet:
+        ipv4_address: 172.35.0.11
+
+networks:
+  rabbitnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.35.0.0/24

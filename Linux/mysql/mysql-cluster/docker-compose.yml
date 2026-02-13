@@ -1,0 +1,79 @@
+services:
+  mysql-master:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/mysql:5.7.44
+    container_name: mysql-master
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --max_connections=2000
+      --slow_query_log=1
+      --slow_query_log_file=/var/lib/mysql/mysql-slow.log
+      --long_query_time=1
+      --log_queries_not_using_indexes=0
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./master/data:/var/lib/mysql
+      - ./master/conf:/etc/mysql/conf.d
+    networks:
+      mysqlnet:
+        ipv4_address: 172.30.0.11
+
+  mysql-slave1:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/mysql:5.7.44
+    container_name: mysql-slave1
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --max_connections=2000
+      --slow_query_log=1
+      --slow_query_log_file=/var/lib/mysql/mysql-slow.log
+      --long_query_time=1
+      --log_queries_not_using_indexes=0
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3307"
+    volumes:
+      - ./slave1/data:/var/lib/mysql
+      - ./slave1/conf:/etc/mysql/conf.d
+    networks:
+      mysqlnet:
+        ipv4_address: 172.30.0.12
+
+  mysql-slave2:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/mysql:5.7.44
+    container_name: mysql-slave2
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --max_connections=2000
+      --slow_query_log=1
+      --slow_query_log_file=/var/lib/mysql/mysql-slow.log
+      --long_query_time=1
+      --log_queries_not_using_indexes=0
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      TZ: Asia/Shanghai
+    ports:
+      - "3308:3308"
+    volumes:
+      - ./slave2/data:/var/lib/mysql
+      - ./slave2/conf:/etc/mysql/conf.d
+    networks:
+      mysqlnet:
+        ipv4_address: 172.30.0.13
+
+networks:
+  mysqlnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16

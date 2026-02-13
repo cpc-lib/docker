@@ -1,0 +1,11 @@
+# docker run -d -p 6666:6666 --name jrebel registry.cn-hangzhou.aliyuncs.com/zhengqing/jrebel
+services:
+  jrebel:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/jrebel
+    container_name: jrebel
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      LANG: en_US.UTF-8
+    ports:
+      - "6666:6666"
