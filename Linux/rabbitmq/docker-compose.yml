@@ -1,0 +1,25 @@
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    build:
+      context: .
+    image: g2plus/rabbitmq:4.1-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "15672:15672"   # Management UI
+      - "5672:5672"     # AMQP
+      - "61613:61613"   # STOMP
+      - "1883:1883"     # MQTT
+      - "15675:15675"   # MQTT over WebSockets (optional)
+    restart: unless-stopped
+    volumes:
+      - log:/var/log/rabbitmq
+      - data:/var/lib/rabbitmq
+    networks:
+      - rabbitmq
+
+networks:
+  rabbitmq:
+    driver: bridge

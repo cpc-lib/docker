@@ -1,0 +1,94 @@
+version: '3.8'
+
+networks:
+  monitor-net:
+    driver: bridge
+
+services:
+  # MySQL 服务
+  mysql:
+    networks:
+      - monitor-net
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/mysql:5.7.44
+    container_name: mysql
+    restart: unless-stopped
+    mem_limit: 400m
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "cpc!23#@"
+      TZ: Asia/Shanghai
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --innodb_buffer_pool_size=128M
+      - --max_connections=300
+      - --slow_query_log=1
+      - --slow_query_log_file=/var/lib/mysql/mysql-slow.log
+      - --long_query_time=1
+      - --log_queries_not_using_indexes=0
+    volumes:
+      - ./mysql57/data:/var/lib/mysql
+      - ./mysql57/conf:/etc/mysql/conf.d
+      - ./mysql57/init:/docker-entrypoint-initdb.d
+
+  # MySQL 采集器
+  mysqld-exporter:
+    networks:
+      - monitor-net
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/mysqld-exporter:v0.18.0
+    container_name: mysqld-exporter
+    restart: unless-stopped
+    mem_limit: 50m
+    command:
+      - '--config.my-cnf=/etc/mysql/.my.cnf'
+      - '--web.listen-address=:9104'
+    volumes:
+      - ./exporter-cnf/exporter.cnf:/etc/mysql/.my.cnf:ro
+    ports:
+      - "9104:9104"
+    depends_on:
+      - mysql
+
+  # Prometheus 监控核心
+  prometheus:
+    networks:
+      - monitor-net
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/prometheus:v3.7.3
+    container_name: prometheus
+    restart: unless-stopped
+    mem_limit: 300m
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=1d"
+      - "--storage.tsdb.retention.size=512MB"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - mysqld-exporter
+
+  # Grafana 可视化
+  grafana:
+    networks:
+      - monitor-net
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/grafana:12.1
+    container_name: grafana
+    restart: unless-stopped
+    mem_limit: 150m
+    environment:
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_FEATURE_TOGGLES_ENABLE: ""
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus

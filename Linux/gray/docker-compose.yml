@@ -1,0 +1,87 @@
+services:
+  mysql:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/mysql:8.0
+    container_name: gray-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: gray_release
+      MYSQL_USER: gray
+      MYSQL_PASSWORD: gray123456
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - gray-mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/redis:7.2
+    container_name: gray-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - gray-redis-data:/data
+
+  nacos:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/nacos-server:v2.3.2
+    container_name: gray-nacos
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+      JVM_XMN: 128m
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8848/nacos/v1/console/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+
+  sentinel-dashboard:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/sentinel-dashboard:1.8.8
+    container_name: gray-sentinel
+    ports:
+      - "8858:8858"
+
+  prometheus:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/prometheus:v2.55.1
+    container_name: gray-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "19090:9090"
+
+  grafana:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/grafana:11.4.0
+    container_name: gray-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123456
+    ports:
+      - "13000:3000"
+    volumes:
+      - gray-grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+
+volumes:
+  gray-mysql-data:
+  gray-redis-data:
+  gray-grafana-data:

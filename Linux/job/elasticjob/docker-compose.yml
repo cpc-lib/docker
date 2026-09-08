@@ -1,0 +1,155 @@
+services:
+  mysql:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/mysql:8.0.36
+    container_name: order-job-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_ROOT_HOST: "%"
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+      - mysql-data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - order-job-network
+
+  nacos:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/nacos-server:v2.3.2
+    container_name: order-job-nacos
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MODE: standalone
+      SPRING_DATASOURCE_PLATFORM: mysql
+      MYSQL_SERVICE_HOST: mysql
+      MYSQL_SERVICE_PORT: 3306
+      MYSQL_SERVICE_DB_NAME: order_demo
+      MYSQL_SERVICE_USER: root
+      MYSQL_SERVICE_PASSWORD: root123456
+      MYSQL_SERVICE_DB_PARAM: characterEncoding=utf8&connectTimeout=10000&socketTimeout=30000&autoReconnect=true&useUnicode=true&serverTimezone=Asia/Shanghai
+      NACOS_AUTH_ENABLE: "false"
+      TZ: Asia/Shanghai
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    networks:
+      - order-job-network
+
+  zookeeper:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/zookeeper:3.9
+    container_name: order-job-zookeeper
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "2181:2181"
+    networks:
+      - order-job-network
+
+  xxl-job-admin:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/xxl-job-admin:2.4.1
+    container_name: order-job-xxl-admin
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      PARAMS: >-
+        --spring.datasource.url=jdbc:mysql://mysql:3306/xxl_job?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+        --spring.datasource.username=root
+        --spring.datasource.password=root123456
+    ports:
+      - "8080:8080"
+    networks:
+      - order-job-network
+
+  powerjob-server:
+    image: registry.cn-hangzhou.aliyuncs.com/snow-io/powerjob-server:4.3.9
+    container_name: order-job-powerjob-server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      JVMOPTIONS: "-Xms256m -Xmx512m"
+      PARAMS: >-
+        --spring.profiles.active=daily
+        --oms.mongodb.enable=false
+        --spring.jpa.hibernate.ddl-auto=update
+        --spring.datasource.core.driver-class-name=com.mysql.cj.jdbc.Driver
+        --spring.datasource.core.jdbc-url=jdbc:mysql://mysql:3306/powerjob?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+        --spring.datasource.core.username=root
+        --spring.datasource.core.password=root123456
+        --spring.datasource.core.maximum-pool-size=20
+        --spring.datasource.core.minimum-idle=5
+        --oms.storage.dfs.mysql_series.driver=com.mysql.cj.jdbc.Driver
+        --oms.storage.dfs.mysql_series.url=jdbc:mysql://mysql:3306/powerjob?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+        --oms.storage.dfs.mysql_series.username=root
+        --oms.storage.dfs.mysql_series.password=root123456
+        --oms.storage.dfs.mysql_series.auto_create_table=true
+    ports:
+      - "7700:7700"
+      - "10086:10086"
+      - "10010:10010"
+    volumes:
+      - powerjob-server-data:/root/powerjob/server
+    networks:
+      - order-job-network
+
+  # PowerJob 4.3.9 不会自动插入 app_info。
+  # 此一次性容器等待 PowerJob 启动后，幂等创建默认应用。
+  powerjob-init:
+    image: curlimages/curl:8.10.1
+    container_name: order-job-powerjob-init
+    restart: "no"
+    depends_on:
+      - powerjob-server
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        echo "Waiting for PowerJob Server..."
+        until curl -fsS http://powerjob-server:7700/appInfo/list >/tmp/powerjob-apps.json; do
+          sleep 3
+        done
+
+        if grep -q "order-job-worker" /tmp/powerjob-apps.json; then
+          echo "PowerJob app order-job-worker already exists."
+        else
+          echo "Creating PowerJob app order-job-worker..."
+          curl -fsS \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"appName":"order-job-worker","password":"powerjob123"}' \
+            http://powerjob-server:7700/appInfo/save
+          echo
+          echo "PowerJob app initialized."
+        fi
+    networks:
+      - order-job-network
+
+volumes:
+  mysql-data:
+  powerjob-server-data:
+
+networks:
+  order-job-network:
+    driver: bridge

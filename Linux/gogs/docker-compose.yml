@@ -10,7 +10,10 @@ services:
     environment:
       TZ: 'Asia/Shanghai'
     volumes: # 数据卷挂载路径设置,将本机目录映射到容器目录
-      - "./gogs:/data" # 保存 Git 存储库和 Gogs 数据
+      - gogs:/data # 保存 Git 存储库和 Gogs 数据
     ports: # 映射端口
       - "10022:22"
       - "10880:3000"
+volumes:
+  gogs:
+

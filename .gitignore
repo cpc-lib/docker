@@ -1,2 +1,43 @@
-### IntelliJ IDEA ###
-.idea
+# IDE
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Logs
+*.log
+
+# Docker volumes (data only, not config)
+**/data/
+**/mysql_data/
+**/db/
+**/logs/
+**/log/
+**/store/
+**/wal/
+**/tmp/
+**/temp/
+**/__pycache__/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Java
+*.class
+*.jar
+target/
+
+# Python
+*.pyc
+__pycache__/
+.venv/
